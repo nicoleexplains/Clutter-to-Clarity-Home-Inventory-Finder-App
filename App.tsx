@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
-import type { InventoryLocation } from './types';
+import type { InventoryLocation, Item } from './types';
 import { inventoryResponseSchema } from './constants';
 import Header from './components/Header';
 import ImageUploader from './components/ImageUploader';
@@ -14,7 +14,7 @@ const App: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState<string | undefined>(process.env.API_KEY);
+  const apiKey = process.env.API_KEY;
 
   const handleAnalyzeImage = useCallback(async () => {
     if (!selectedFile) {
@@ -31,7 +31,7 @@ const App: React.FC = () => {
     setError(null);
 
     try {
-      const ai = new GoogleGenAI(apiKey);
+      const ai = new GoogleGenAI({apiKey});
       const imagePart = await fileToGenerativePart(selectedFile);
 
       const textPart = {
@@ -62,6 +62,18 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, [selectedFile, apiKey]);
+
+  const handleUpdateItem = useCallback((locationIndex: number, itemIndex: number, updatedItem: Item) => {
+    setInventory(currentInventory => {
+      const newInventory = [...currentInventory];
+      const newLocation = { ...newInventory[locationIndex] };
+      const newItems = [...newLocation.items];
+      newItems[itemIndex] = updatedItem;
+      newLocation.items = newItems;
+      newInventory[locationIndex] = newLocation;
+      return newInventory;
+    });
+  }, []);
 
 
   return (
@@ -95,7 +107,7 @@ const App: React.FC = () => {
         
         {inventory.length > 0 && (
           <div className="mt-12">
-            <InventoryDisplay inventory={inventory} apiKey={apiKey} />
+            <InventoryDisplay inventory={inventory} apiKey={apiKey} onUpdateItem={handleUpdateItem} />
           </div>
         )}
 

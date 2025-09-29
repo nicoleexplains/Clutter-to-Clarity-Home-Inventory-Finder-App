@@ -1,30 +1,28 @@
 
 import React, { useState, useMemo } from 'react';
-import type { InventoryLocation } from '../types';
+import type { InventoryLocation, Item } from '../types';
 import LocationCard from './LocationCard';
 
 interface InventoryDisplayProps {
   inventory: InventoryLocation[];
   apiKey: string | undefined;
+  onUpdateItem: (locationIndex: number, itemIndex: number, updatedItem: Item) => void;
 }
 
-const InventoryDisplay: React.FC<InventoryDisplayProps> = ({ inventory, apiKey }) => {
+const InventoryDisplay: React.FC<InventoryDisplayProps> = ({ inventory, apiKey, onUpdateItem }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredInventory = useMemo(() => {
-    if (!searchTerm) return inventory;
+  const hasResults = useMemo(() => {
+    if (!searchTerm) return true;
 
     const lowercasedFilter = searchTerm.toLowerCase();
     
-    return inventory.map(location => {
-      const filteredItems = location.items.filter(item => 
+    return inventory.some(location => 
+      location.items.some(item => 
         item.name.toLowerCase().includes(lowercasedFilter) ||
         item.category.toLowerCase().includes(lowercasedFilter)
-      );
-      // Return a new location object with only filtered items
-      return { ...location, items: filteredItems };
-    }).filter(location => location.items.length > 0); // Only include locations that still have items after filtering
-
+      )
+    );
   }, [searchTerm, inventory]);
 
   return (
@@ -45,10 +43,16 @@ const InventoryDisplay: React.FC<InventoryDisplayProps> = ({ inventory, apiKey }
         </div>
       </div>
       
-      {filteredInventory.length > 0 ? (
+      {hasResults ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredInventory.map((location, index) => (
-                <LocationCard key={`${location.location_suggestion}-${index}`} location={location} apiKey={apiKey} />
+            {inventory.map((location, locationIndex) => (
+                <LocationCard 
+                    key={`${location.location_suggestion}-${locationIndex}`} 
+                    location={location} 
+                    apiKey={apiKey}
+                    searchTerm={searchTerm}
+                    onUpdateItem={(itemIndex, updatedItem) => onUpdateItem(locationIndex, itemIndex, updatedItem)}
+                />
             ))}
         </div>
       ) : (

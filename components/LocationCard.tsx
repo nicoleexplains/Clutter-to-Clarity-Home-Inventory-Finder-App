@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import type { InventoryLocation, Item } from '../types';
 import ItemCard from './ItemCard';
 import { GoogleGenAI } from "@google/genai";
@@ -7,6 +7,8 @@ import { GoogleGenAI } from "@google/genai";
 interface LocationCardProps {
   location: InventoryLocation;
   apiKey: string | undefined;
+  searchTerm: string;
+  onUpdateItem: (itemIndex: number, updatedItem: Item) => void;
 }
 
 const LabelGeneratorModal: React.FC<{ label: string; onClose: () => void }> = ({ label, onClose }) => (
@@ -27,10 +29,21 @@ const LabelGeneratorModal: React.FC<{ label: string; onClose: () => void }> = ({
 );
 
 
-const LocationCard: React.FC<LocationCardProps> = ({ location, apiKey }) => {
+const LocationCard: React.FC<LocationCardProps> = ({ location, apiKey, searchTerm, onUpdateItem }) => {
     const [isGeneratingLabel, setIsGeneratingLabel] = useState(false);
     const [suggestedLabel, setSuggestedLabel] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    const filteredItems = useMemo(() => {
+        if (!searchTerm) {
+            return location.items;
+        }
+        const lowercasedFilter = searchTerm.toLowerCase();
+        return location.items.filter(item =>
+            item.name.toLowerCase().includes(lowercasedFilter) ||
+            item.category.toLowerCase().includes(lowercasedFilter)
+        );
+    }, [searchTerm, location.items]);
 
     const handleGenerateLabel = useCallback(async () => {
         if (!apiKey) {
@@ -45,7 +58,7 @@ const LocationCard: React.FC<LocationCardProps> = ({ location, apiKey }) => {
         const prompt = `Based on this list of items: ${itemsSummary}. Suggest a short, clear, and concise label for a storage bin containing them. The label should be no more than 4 words.`;
 
         try {
-            const ai = new GoogleGenAI(apiKey);
+            const ai = new GoogleGenAI({apiKey});
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: prompt,
@@ -60,13 +73,26 @@ const LocationCard: React.FC<LocationCardProps> = ({ location, apiKey }) => {
         }
     }, [location.items, apiKey]);
 
+    if (searchTerm && filteredItems.length === 0) {
+        return null;
+    }
+
     return (
         <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6 flex flex-col h-full">
             <h3 className="text-xl font-bold text-slate-800 border-b pb-3 mb-4">{location.location_suggestion}</h3>
             <div className="flex-grow space-y-3 pr-2 -mr-2 overflow-y-auto" style={{maxHeight: '300px'}}>
-                {location.items.map((item, index) => (
-                    <ItemCard key={index} item={item} />
-                ))}
+                {location.items.map((item, index) => {
+                    if (!filteredItems.includes(item)) {
+                        return null;
+                    }
+                    return (
+                        <ItemCard 
+                            key={index} 
+                            item={item}
+                            onUpdate={(updatedItem) => onUpdateItem(index, updatedItem)} 
+                        />
+                    );
+                })}
             </div>
             <div className="mt-6 pt-4 border-t">
                 <button
