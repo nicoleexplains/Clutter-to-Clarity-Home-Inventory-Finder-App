@@ -1,0 +1,5 @@
+{
+  "name": "AI Inventory & Item Finder (Clutter-to-Clarity)",
+  "description": "An app that lets users quickly photograph their storage spaces (closets, drawers, pantry, garage) and uses AI to identify, categorize, and track every item.",
+  "requestFramePermissions": []
+}
